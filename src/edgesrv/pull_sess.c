@@ -263,7 +263,7 @@ int pull_sess_check (void * vsess)
     if (!sess) return -1;
 
 #ifdef _DEBUG
-    printf("pull_sess_check:sess=%p \n",sess);
+    //printf("pull_sess_check:sess=%p \n",sess);
 #endif    
 	
     mgmt = (EdgeMgmt *)sess->mgmt;
@@ -343,7 +343,8 @@ int pull_sess_response(void *vsess, uint8 *buf, int buflen)
 	ret = sendto (iodev_fd(mgmt->listendev_udp), buf,buflen, 0,(struct sockaddr *)&sock, sizeof(sock));	
     if(ret<0)printf("error: %s\n", strerror(errno));
     
-	printf("SendTo %s:%d %d bytes\n", inet_ntoa(sock.sin_addr), ntohs(sock.sin_port), ret);
+	printf("Pull SendTo %u.%u.%u.%u:%d %d(%d) bytes\n",0xFF & sock.sin_addr.s_addr >> 0,0xFF & sock.sin_addr.s_addr >> 8,
+        0xFF & sock.sin_addr.s_addr >> 16,0xFF & sock.sin_addr.s_addr >> 24, ntohs(sock.sin_port), ret,buflen);
 	
 
 	return 0;

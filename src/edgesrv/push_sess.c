@@ -249,7 +249,7 @@ int push_sess_check (void * vsess)
     if (!sess) return -1;
 
 #ifdef _DEBUG
-    printf("kcp_sess_check:sess=%p \n",sess);
+    //printf("kcp_sess_check:sess=%p \n",sess);
 #endif    
 	
     mgmt = (EdgeMgmt *)sess->mgmt;
@@ -351,7 +351,7 @@ int push_sess_response(void *vsess, uint8 *buf, int buflen)
 	ret = sendto (iodev_fd(mgmt->listendev_udp), buf,buflen, 0,(struct sockaddr *)&sock, sizeof(sock));	
     if(ret<0)printf("error: %s\n", strerror(errno));
     
-	printf("SendTo %s:%d %d bytes\n", inet_ntoa(sock.sin_addr), ntohs(sock.sin_port), ret);
+	//printf("SendTo %s:%d %d bytes\n", inet_ntoa(sock.sin_addr), ntohs(sock.sin_port), ret);
 	
 
 	return 0;
@@ -387,8 +387,16 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
             len = ikcp_recv(sess->kcp, buf, sizeof(buf)-1);
             LeaveCriticalSection(&sess->kcpCS);
 
+            if(len > 0 ){
+                if(buf[0] == 'T'){
+                    printf("push_sess_input [HEAD] %d %c %c %d\n",len,buf[0],buf[4]);
+                }else{
+                    printf("push_sess_input [BODY] %d\n",len);
+                }
+            }
+            
             //printf("push_sess_input %c %c \n",buf[0],buf[4]);
-            //printOctet(stdout, buf, 0,16, 2);
+            //printOctet(stdout, buf, 0,30, 2);
 
             ifinfo = FALSE;
             if(len > 0 && buf[0] == 'T' && buf[4] == 'I' ){
@@ -418,6 +426,23 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
         }
         
     }
+
+    return 0;
+}
+
+int   push_sess_add_list(void *vmgmt, ulong sessid, ulong pullid)
+{
+    EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
+    PushSess    *sess = NULL;
+
+    if(!mgmt) return -1;
+
+    sess = push_mgmt_sess_get(mgmt,sessid);
+    if(!sess) return -2;
+
+	EnterCriticalSection(&sess->pullCS);
+    arr_push(sess->pull_list, (void*)pullid);
+	LeaveCriticalSection(&sess->pullCS);	
 
     return 0;
 }

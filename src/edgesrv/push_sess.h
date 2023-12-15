@@ -54,6 +54,7 @@ int   push_sess_check (void *vsess);
 
 int   push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen);
 
+int   push_sess_add_list(void *vmgmt, ulong sessid, ulong pullid);
 int   push_sess_get_list(void *vsess,void * arr);
 int   push_sess_build_list(void *vsess);
 

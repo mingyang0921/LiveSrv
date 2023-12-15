@@ -179,7 +179,7 @@ int edge_body_pump (void * vbody, void * vobj, int event, int fdtype)
     int          cmd = 0;
 	ulong        sessid = 0;
     void        *sess = NULL;
-
+/*
 #ifdef _DEBUG
 printf("\nEdge_Ifac_Pump: "); 
 if (event == IOE_CONNECTED) printf("IOE_CONNECTED ");
@@ -202,7 +202,7 @@ else printf("Unknown Type");
 if (event != IOE_TIMEOUT) printf(" FD: %d", iodev_fd(vobj));
 printf("\n");
 #endif
- 
+*/
     switch (event) {
     case IOE_ACCEPT:
         break;
@@ -231,7 +231,7 @@ printf("\n");
         }
         else if(cmd == t_pull_kcp_sess_check){
             sessid = (ulong)iotimer_para(vobj);         
-            sess = push_mgmt_sess_get(body, sessid);
+            sess = pull_mgmt_sess_get(body, sessid);
             if (sess) {
                 pull_sess_check (sess);
             }

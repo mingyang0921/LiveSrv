@@ -50,7 +50,7 @@ int    pull_sess_close   (void *vsess);
 int    pull_mgmt_onlyinfo (void *vmgmt, ulong sessid, uint8 *buf, int buflen);
 int    pull_mgmt_stream   (void *vmgmt, ulong sessid, uint8 *buf, int buflen, uint8 *info, int infolen);
 
-int    pull_update_check (void * vsess);
+int    pull_sess_check (void * vsess);
 int    pull_body_sendto   (const char *buf, int len, void *kcp, void *user);
 
 

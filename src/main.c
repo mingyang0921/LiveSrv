@@ -172,7 +172,7 @@ int EntryPoint (int argc, char ** argv)
     //arglist[0] = argv[0];
     argv[1] = confile;
 
-    body = edge_mgmt_init("edgesrv.conf", httpmgmt);
+    body = edge_mgmt_init("edgesrv.conf",pcore,httpmgmt);
 
    /* now startup the system, epump as the engine will be erected */
  
@@ -184,10 +184,10 @@ int EntryPoint (int argc, char ** argv)
  
     /* start worker threads */
     epcore_start_worker(pcore, workernum);
- 
+    //epcore_start_worker(pcore, 0);
     /* start epump threads */
     epcore_start_epump(pcore, epumpnum - 1);
- 
+    //epcore_start_epump(pcore, 1);
  
 #ifdef _DEBUG
     /* create new epump thread executing the epump_main_proc */

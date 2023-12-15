@@ -28,7 +28,7 @@ solib = $(ROOT)/bin
 #  Customization of the implicit rules
 
 #CC = gcc -funsigned-char 
-CC = gcc -funsigned-char -DLINUX_EPOLL
+CC = gcc -funsigned-char -DLINUX_EPOLL -DWAKE_BY_UDP
 IFLAGS = -I$(adif_inc) -I$(secab_inc) -I$(probe_inc) 
 #DEFS = -D_DEBUG
 CFLAGS = -g -fPIC -Wall $(IFLAGS)

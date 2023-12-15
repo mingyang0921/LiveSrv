@@ -24,6 +24,9 @@ void * epudp_client (void * vpcore, char * localip, int port,
                      void * para, int * retval, IOHandler * cb, void * cbpara,
                      iodev_t ** devlist, int * devnum);
 
+void * epudp_client2 (void * vpcore, char * localip, int port,
+                     void * para, int * retval, IOHandler * cb, void * cbpara);
+
 int epudp_recvfrom (void * vdev, void * vfrm, void * addr, int * pnum);
 
 #ifdef __cplusplus

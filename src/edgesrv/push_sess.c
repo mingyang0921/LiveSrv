@@ -111,6 +111,7 @@ void *push_sess_fetch (void * vmgmt)
     //sess->ikcp->rx_minrto = 50;
     //sess->ikcp->fastresend = 1;
     //sess->ikcp->stream = 1;
+    ikcp_setinfo(sess->kcp);
  
 	sess->mgmt = mgmt;
 	sess->ctime = time(&sess->stamp);
@@ -307,7 +308,7 @@ int push_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr)
         memset(baseaddr,0,sizeof(addr));
         sprintf(baseaddr,"%s:%u",inet_ntoa(sess->peerip),sess->peerport);
         
-        addr_mgmt_sess_add(mgmt,baseaddr,sessid);
+        addr_mgmt_sess_add(mgmt,baseaddr,sessid,TRUE);
     }
     
     return 0;
@@ -357,29 +358,18 @@ int push_sess_response(void *vsess, uint8 *buf, int buflen)
 }
 
 
-int push_sess_input(void *vmgmt, uint8 *pbuf, int buflen, struct sockaddr_in * addr)
+int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
 {
-    EdgeMgmt   *mgmt = (EdgeMgmt*)vmgmt;
-    PushSess   *sess = NULL;    
-	struct in_addr peerip;
-	uint16         peerport;
-    uint8          baseaddr[64];
-    uint64         sessid = 0;
-
+    EdgeMgmt      *mgmt = (EdgeMgmt*)vmgmt;
+    PushSess      *sess = NULL;    
     arr_t         *explist = NULL;
     int            len = 0;
     uint8          buf[16*1024];
     int            num = 0;
     void          *tmp = NULL;
     int            i = 0;
-
-    peerip = addr->sin_addr;
-    peerport = ntohs(addr->sin_port);
-    
-    memset(baseaddr,0,sizeof(addr));
-    sprintf(baseaddr,"%s:%d",inet_ntoa(peerip),peerport);
-
-    addr_mgmt_sess_get(mgmt,baseaddr,&sessid);
+    uint8          state=0;
+    uint8          ifinfo=0;
 
     sess = push_mgmt_sess_get(mgmt,sessid);
     if(sess){
@@ -398,11 +388,13 @@ int push_sess_input(void *vmgmt, uint8 *pbuf, int buflen, struct sockaddr_in * a
             LeaveCriticalSection(&sess->kcpCS);
 
             //printf("push_sess_input %c %c \n",buf[0],buf[4]);
-            printOctet(stdout, buf, 0,16, 2);
+            //printOctet(stdout, buf, 0,16, 2);
 
+            ifinfo = FALSE;
             if(len > 0 && buf[0] == 'T' && buf[4] == 'I' ){
                 memcpy(sess->mdinfo,buf,buflen);
                 sess->mdinfo_len = buflen;
+                ifinfo = TRUE;
             }
 
             if(len > 0){
@@ -410,9 +402,14 @@ int push_sess_input(void *vmgmt, uint8 *pbuf, int buflen, struct sockaddr_in * a
 			    for (i=0; i<num; i++) {
 				    tmp = arr_value(explist,i);
 				    if(tmp){
-                        pull_mgmt_sess_get(mgmt,(ulong)tmp);
+                        //pull_mgmt_sess_get(mgmt,(ulong)tmp);
 
-                        //send to pull
+                        if(ifinfo){
+                            pull_mgmt_onlyinfo(mgmt,(ulong)tmp,buf,buflen);
+                        }else{
+                            pull_mgmt_stream(mgmt,(ulong)tmp,buf,buflen,sess->mdinfo,sess->mdinfo_len);
+                            //send to pull
+                        }
 				    }
 		    	}
 		    }else{
@@ -457,6 +454,21 @@ int   push_sess_build_list(void *vsess)
 int push_body_sendto   (const char *buf, int len, void *kcp, void *user)
 {
     push_sess_response(user,buf,len);
+    return 0;
+}
+
+int   push_sess_addlist(void *vmgmt, ulong sessid, ulong pullid)
+{
+    EdgeMgmt      *mgmt = (EdgeMgmt*)vmgmt;
+    PushSess      *sess = NULL;
+
+    if(!mgmt) return -1;
+
+    sess = push_mgmt_sess_get(mgmt,sessid);
+    if(!sess) return -2;
+
+    
+
     return 0;
 }
 

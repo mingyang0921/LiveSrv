@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #define AVKCP_CONV (('A' << 0) | ('V' << 8) | ('K' << 16) | ('C' << 24))
+#define ADDR_SIZE 64
 
 typedef struct edge_mgmt {
 
@@ -33,7 +34,6 @@ typedef struct edge_mgmt {
     CRITICAL_SECTION   pushCS;
     arr_t            * push_list;
     hashtab_t        * push_table;
-    hashtab_t        * pushaddr_table;
 
     CRITICAL_SECTION   pullCS;
     arr_t            * pull_list;
@@ -49,6 +49,7 @@ typedef struct edge_mgmt {
 
 } EdgeMgmt;
 
+int    addr_sess_cmp_sessid (void * a, void * b);
 
 void * edge_mgmt_init ( void * hconf, void *pcore, void * http_mgmt);
 int    edge_mgmt_clean(void * vmgmt);
@@ -68,9 +69,8 @@ void  *pull_mgmt_sess_del(void * vmgmt, ulong sessid);
 int    pull_mgmt_get_list(void *vmgmt, void * arr);
 
 
-int    addr_sess_cmp_sessid (void * a, void * b);
-int    addr_mgmt_sess_add(void *vmgmt, uint8 *addr, ulong sessid);
-int    addr_mgmt_sess_get(void *vmgmt, uint8 *addr, ulong *sessid);
+int    addr_mgmt_sess_add(void *vmgmt, uint8 *addr, ulong sessid, uint8 state);
+int    addr_mgmt_sess_get(void *vmgmt, uint8 *addr, ulong *sessid, uint8 *state);
 int    addr_mgmt_sess_del(void *vmgmt, uint8 *addr);
 
 

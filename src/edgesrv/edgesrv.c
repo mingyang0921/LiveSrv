@@ -8,6 +8,23 @@
 #include "edge_io.h"
 #include "edgesrv.h"
 
+typedef struct Push_sessId {
+	ulong              sessid;
+    uint8              addr[ADDR_SIZE+1];
+    uint8              ifpush;
+} PushSessId;
+
+int addr_sess_cmp_sessid (void * a, void * b)
+{
+    PushSessId *va = (PushSessId *)a;
+    uint8      *vb = (uint8*)b;	
+
+    if(strncmp(va->addr,vb,strlen(va->addr)) == 0){
+        return 0;
+    }
+
+    return -1;
+}
 
 int edge_mgmt_conf (void * vmgmt, void * hconf)
 {
@@ -59,13 +76,14 @@ void * edge_mgmt_init ( void * hconf, void *pcore, void * http_mgmt)
     mgmt->push_list = arr_new(16);
     mgmt->push_table = ht_only_new(200,push_sess_cmp_sessid);
     ht_set_hash_func(mgmt->push_table, push_sess_id_hash_func);
-    mgmt->pushaddr_table = ht_only_new(200,addr_sess_cmp_sessid);
+
+    InitializeCriticalSection(&mgmt->addrCS);
+    mgmt->addr_table = ht_only_new(200,addr_sess_cmp_sessid);
     
     InitializeCriticalSection(&mgmt->pullCS);
     mgmt->pull_list = arr_new(16);
     mgmt->pull_table = ht_only_new(200,pull_sess_cmp_sessid);
     ht_set_hash_func(mgmt->pull_table, pull_sess_id_hash_func);
-
 
     if (!mgmt->push_pool) {
         mgmt->push_pool = bpool_init(NULL);
@@ -100,7 +118,7 @@ int edge_mgmt_clean (void * vmgmt)
     if (mgmt->logfp) fclose(mgmt->logfp);
     DeleteCriticalSection(&mgmt->logfpCS);  
 
-    DeleteCriticalSection(&mgmt->pushCS);
+    DeleteCriticalSection(&mgmt->addrCS);
     ht_free(mgmt->addr_table);
 
     DeleteCriticalSection(&mgmt->pushCS);
@@ -204,11 +222,19 @@ printf("\n");
     case IOE_TIMEOUT:
         cmd = iotimer_cmdid(vobj);
         if(cmd == t_push_kcp_sess_check) {
-                sessid = (ulong)iotimer_para(vobj);         
-                sess = push_mgmt_sess_get(body, sessid);
-                if (sess) {
-                    push_sess_check (sess);
-                }
+            sessid = (ulong)iotimer_para(vobj);         
+            sess = push_mgmt_sess_get(body, sessid);
+            if (sess) {
+                push_sess_check (sess);
+            }
+            return 0;
+        }
+        else if(cmd == t_pull_kcp_sess_check){
+            sessid = (ulong)iotimer_para(vobj);         
+            sess = push_mgmt_sess_get(body, sessid);
+            if (sess) {
+                pull_sess_check (sess);
+            }
             return 0;
         }
         
@@ -346,45 +372,44 @@ int  pull_mgmt_get_list(void *vmgmt, void * arr)
 	return 0;
 }
 
-int addr_sess_cmp_sessid (void * a, void * b)
-{
-    ulong    va = (ulong)a;
-    ulong    vb = (ulong)b;	
-
-    if(va == vb) return 0;
-
-    return -1;
-}
-
-int    addr_mgmt_sess_add(void *vmgmt, uint8 *addr, ulong sessid)
+int    addr_mgmt_sess_add(void *vmgmt, uint8 *addr, ulong sessid, uint8 state)
 {
 	EdgeMgmt  *mgmt = (EdgeMgmt *)vmgmt;	
-    void      *id = NULL;
+    void      *tmp = NULL;
+    PushSessId *id = kalloc(sizeof(PushSessId));
 
 	if(!mgmt) return -1;
 
+    memcpy(id->addr,addr,strlen(addr) > ADDR_SIZE ? ADDR_SIZE : strlen(addr));
+    id->sessid = sessid;
+    id->ifpush = state;
+
 	EnterCriticalSection(&mgmt->addrCS);
-	id = ht_get(mgmt->addr_table,addr);
-	if(!id){
-		ht_set(mgmt->addr_table,addr,sessid);
+	tmp = ht_get(mgmt->addr_table,addr);
+	if(!tmp){
+		ht_set(mgmt->addr_table,addr,id);
 	}
 	LeaveCriticalSection(&mgmt->addrCS);
 
 	return 0;
 }
 
-int    addr_mgmt_sess_get(void *vmgmt, uint8 *addr, ulong *sessid)
+int    addr_mgmt_sess_get(void *vmgmt, uint8 *addr, ulong *sessid, uint8 *state)
 {
-	EdgeMgmt  *mgmt = (EdgeMgmt *)vmgmt;
-    void      *id = NULL;
+	EdgeMgmt    *mgmt = (EdgeMgmt *)vmgmt;
+    PushSessId  *id = NULL;
 
-	if(!mgmt) return -1;
+	if(!mgmt) return 0;
 
 	EnterCriticalSection(&mgmt->addrCS);
 	id = ht_get(mgmt->addr_table,addr);
 	LeaveCriticalSection(&mgmt->addrCS);
-    
-    *sessid = id;
+
+    if(id){
+        *sessid = id->sessid;
+        *state = id->ifpush;
+        return 1;
+    }
 
     return 0;
 }
@@ -392,12 +417,14 @@ int    addr_mgmt_sess_get(void *vmgmt, uint8 *addr, ulong *sessid)
 int    addr_mgmt_sess_del(void *vmgmt, uint8 *addr)
 {
     EdgeMgmt    *mgmt = (EdgeMgmt *)vmgmt;
- 
+    PushSessId  *id = NULL; 
     if (!mgmt) return -1;
  
     EnterCriticalSection(&mgmt->addrCS);
-    ht_delete(mgmt->addr_table,addr);
+    id = ht_delete(mgmt->addr_table,addr);
     LeaveCriticalSection(&mgmt->addrCS);
+
+    if(id) kfree(id);
 
     return 0;
 }

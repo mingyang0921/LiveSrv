@@ -52,7 +52,7 @@ int   push_sess_para(uint8 *pbuf, int buflen, ulong *sessid, ulong *runid);
 
 int   push_sess_check (void *vsess);
 
-int   push_sess_input(void *vmgmt, uint8 *pbuf, int buflen, struct sockaddr_in * addr);
+int   push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen);
 
 int   push_sess_get_list(void *vsess,void * arr);
 int   push_sess_build_list(void *vsess);
@@ -63,7 +63,7 @@ int   push_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr);
 int   push_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen);
 int   push_sess_response(void *vsess, uint8 *buf, int buflen);
 
-
+int   push_sess_addlist(void *vmgmt, ulong sessid, ulong pullid);
 
 #ifdef _cplusplus
 }

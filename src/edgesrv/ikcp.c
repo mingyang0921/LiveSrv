@@ -1299,4 +1299,12 @@ IUINT32 ikcp_getconv(const void *ptr)
     return conv;
 }
 
-
+void ikcp_setinfo(void *vkcp)
+{
+    ikcpcb * kcp = (ikcpcb *)vkcp;
+    
+    kcp->interval = 10;
+    kcp->rx_minrto = 50;
+    kcp->fastresend = 1;
+    kcp->stream = 1;
+}

@@ -315,12 +315,14 @@ int   pull_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen)
 
     sess = pull_mgmt_sess_get(mgmt,sessid);
     if(sess){
+        EnterCriticalSection(&sess->kcpCS);
+        //push_sess_printf_data(buf,buflen);
         ikcp_send(sess->kcp, buf, buflen);
+        LeaveCriticalSection(&sess->kcpCS);
     } 
 
     return 0;
 }
-
 
 int pull_sess_response(void *vsess, uint8 *buf, int buflen)
 {
@@ -343,8 +345,8 @@ int pull_sess_response(void *vsess, uint8 *buf, int buflen)
 	ret = sendto (iodev_fd(mgmt->listendev_udp), buf,buflen, 0,(struct sockaddr *)&sock, sizeof(sock));	
     if(ret<0)printf("error: %s\n", strerror(errno));
     
-	printf("Pull SendTo %u.%u.%u.%u:%d %d(%d) bytes\n",0xFF & sock.sin_addr.s_addr >> 0,0xFF & sock.sin_addr.s_addr >> 8,
-        0xFF & sock.sin_addr.s_addr >> 16,0xFF & sock.sin_addr.s_addr >> 24, ntohs(sock.sin_port), ret,buflen);
+	//printf("Pull SendTo %u.%u.%u.%u:%d %d(%d) bytes\n",0xFF & sock.sin_addr.s_addr >> 0,0xFF & sock.sin_addr.s_addr >> 8,
+    //    0xFF & sock.sin_addr.s_addr >> 16,0xFF & sock.sin_addr.s_addr >> 24, ntohs(sock.sin_port), ret,buflen);
 	
 
 	return 0;

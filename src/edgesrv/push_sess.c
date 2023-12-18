@@ -216,6 +216,7 @@ int   push_sess_restart (void *vmgmt, uint64 sessid, uint64 runid)
     sess = push_mgmt_sess_get(mgmt,sessid);
     if(!sess){
         sess = push_sess_open (mgmt,sessid,runid);
+        push_sess_add_list(mgmt,sessid,2000);
         return 0;
     }
 
@@ -357,6 +358,79 @@ int push_sess_response(void *vsess, uint8 *buf, int buflen)
 	return 0;
 }
 
+static int datacount = 0;
+
+int push_sess_printf_data(uint8 *data, int datalen)
+{
+    uint32  first=0;
+    uint32  second=0;
+
+    uint8   H_TYPE=0;
+    uint32  H_PTS=0;
+    uint8   T_TYPE=0;
+    uint32  T_LEN = 0;
+
+    memcpy(&first,data,4);
+    memcpy(&second,data+4,4);
+    
+    H_TYPE = first & 0xff;
+    H_PTS  = first >> 8;
+    
+    T_TYPE = second & 0xff;
+    T_LEN  = second >> 8;
+
+    if(H_TYPE == 'T' && (T_TYPE == 'V' || T_TYPE == 'A' || T_TYPE == 'I'))
+    {
+        if(T_TYPE == 'I'){
+            printf("[%s][%d]\n",data+8,datalen-8);
+        }
+        datacount = datalen-8;
+        printf("[HEAD] %c %u %c %u %d %d\n",H_TYPE,H_PTS,T_TYPE,T_LEN,datalen,datacount);   
+    }else{
+        datacount += datalen;
+        printf("[BODY] %d-%d\n",datalen,datacount);
+    }
+    
+    return 0;
+}
+
+
+static int datacount1 = 0;
+
+int push_sess_printf_data1(uint8 *data, int datalen)
+{
+    uint32  first=0;
+    uint32  second=0;
+
+    uint8   H_TYPE=0;
+    uint32  H_PTS=0;
+    uint8   T_TYPE=0;
+    uint32  T_LEN = 0;
+
+    memcpy(&first,data,4);
+    memcpy(&second,data+4,4);
+    
+    H_TYPE = first & 0xff;
+    H_PTS  = first >> 8;
+    
+    T_TYPE = second & 0xff;
+    T_LEN  = second >> 8;
+
+    if(H_TYPE == 'T' && (T_TYPE == 'V' || T_TYPE == 'A' || T_TYPE == 'I'))
+    {
+        if(T_TYPE == 'I'){
+            printf("[%s][%d]\n",data+8,datalen-8);
+        }
+        datacount1 = datalen-8;
+        printf("[HEAD0] %c %u %c %u %d %d\n",H_TYPE,H_PTS,T_TYPE,T_LEN,datalen,datacount1);   
+    }else{
+        datacount1 += datalen;
+        printf("[BODY0] %d-%d\n",datalen,datacount1);
+    }
+    
+    return 0;
+}
+
 
 int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
 {
@@ -385,14 +459,13 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
         {
             EnterCriticalSection(&sess->kcpCS);
             len = ikcp_recv(sess->kcp, buf, sizeof(buf)-1);
+            if(len > 0 ){
+                //push_sess_printf_data1(buf,len);
+            }            
             LeaveCriticalSection(&sess->kcpCS);
 
             if(len > 0 ){
-                if(buf[0] == 'T'){
-                    printf("push_sess_input [HEAD] %d %c %c %d\n",len,buf[0],buf[4]);
-                }else{
-                    printf("push_sess_input [BODY] %d\n",len);
-                }
+                //push_sess_printf_data(buf,len);
             }
             
             //printf("push_sess_input %c %c \n",buf[0],buf[4]);
@@ -407,15 +480,15 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
 
             if(len > 0){
 			    num = arr_num(explist);
-			    for (i=0; i<num; i++) {
+			    for (i=0; i<1; i++) {
 				    tmp = arr_value(explist,i);
 				    if(tmp){
                         //pull_mgmt_sess_get(mgmt,(ulong)tmp);
 
                         if(ifinfo){
-                            pull_mgmt_onlyinfo(mgmt,(ulong)tmp,buf,buflen);
+                            pull_mgmt_onlyinfo(mgmt,(ulong)tmp,buf,len);
                         }else{
-                            pull_mgmt_stream(mgmt,(ulong)tmp,buf,buflen,sess->mdinfo,sess->mdinfo_len);
+                            pull_mgmt_stream(mgmt,(ulong)tmp,buf,len,sess->mdinfo,sess->mdinfo_len);
                             //send to pull
                         }
 				    }

@@ -6,6 +6,9 @@
 extern "C" {
 #endif
 
+int is_ikcp_head(const char *buf, int len);
+int is_push_head(const char *buf, int len);
+
 
 int edge_body_sendto   (const char *buf, int len, void *kcp, void *user);
 int edge_body_recvfrom (void * vbody, void * pdev);

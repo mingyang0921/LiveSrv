@@ -48,7 +48,7 @@ void *push_sess_open    (void *vmgmt, ulong sessid, uint64 runid);
 int   push_sess_close   (void *vsess);
 int   push_sess_restart (void *vmgmt, uint64 sessid, uint64 runid);
 
-int   push_sess_para(uint8 *pbuf, int buflen, ulong *sessid, ulong *runid);
+int   push_sess_para(uint8 *pbuf, int buflen, uint64 *sessid, uint64 *runid);
 
 int   push_sess_check (void *vsess);
 

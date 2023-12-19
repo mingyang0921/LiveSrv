@@ -228,7 +228,7 @@ int   push_sess_restart (void *vmgmt, uint64 sessid, uint64 runid)
     return 0;
 }
 
-int push_sess_para(uint8 *pbuf, int buflen, ulong *sessid, ulong *runid)
+int push_sess_para(uint8 *pbuf, int buflen, uint64 *sessid, uint64 *runid)
 {
     *sessid = 1000;
     *runid = 5000;

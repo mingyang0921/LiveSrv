@@ -25,6 +25,8 @@ typedef struct edge_mgmt {
 	uint8            * logpath;
 	uint8              logstatus;
 
+    CRITICAL_SECTION   sendCS;
+
     CRITICAL_SECTION   pduseqidCS;
     uint32             pduseqid;
 

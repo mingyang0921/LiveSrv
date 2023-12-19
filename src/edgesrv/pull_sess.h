@@ -8,12 +8,19 @@ extern "C" {
 
 #define t_pull_kcp_sess_check 2001
 
+enum {
+    PULL_NULL=0,
+    PULL_INFO,
+    PULL_STREAM
+}PullState;
 
 typedef struct Pull_sess {
 
 	ulong              sessid;
     uint64             runid;
     uint64             pushid;
+
+    uint8              state;
 
     uint8              ifHasInfo;
 

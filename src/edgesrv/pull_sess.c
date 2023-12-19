@@ -50,6 +50,7 @@ int pull_sess_init (void * vsess)
 
     sess->peerport = 0;
     sess->ifHasInfo = FALSE;
+    sess->state = PULL_NULL;
 
 	sess->kcp_timer = NULL;
     InitializeCriticalSection(&sess->kcpCS);
@@ -223,12 +224,24 @@ int    pull_mgmt_stream(void *vmgmt, ulong sessid, uint8 *buf, int buflen, uint8
 
     if(!sess->ifHasInfo){
         // head
+        //printf("pull_sess_sendkcp 1 sess->state=%u\n",sess->state);
         pull_sess_sendkcp(mgmt,sessid,info,infolen);
         sess->ifHasInfo = TRUE;
+        if(sess->state == PULL_NULL) sess->state = PULL_INFO;
+        //printf("pull_sess_sendkcp 2 sess->state=%u\n",sess->state);
     }
 
     // send body
-    pull_sess_sendkcp(mgmt,sessid,buf,buflen);
+    if(sess->state == PULL_INFO){
+        if(buf[0] == 'T' && (/*buf[4] == 'A' ||*/ buf[4] == 'V')){
+            pull_sess_sendkcp(mgmt,sessid,buf,buflen);
+            sess->state = PULL_STREAM;
+            //printf("pull_sess_sendkcp 3 sess->state=%u\n",sess->state);
+        }
+    }else if(sess->state == PULL_STREAM){
+        pull_sess_sendkcp(mgmt,sessid,buf,buflen);
+        //printf("pull_sess_sendkcp 4 sess->state=%u\n",sess->state);
+    }
 
     return 0;
 }
@@ -246,9 +259,10 @@ int    pull_mgmt_onlyinfo(void *vmgmt, ulong sessid, uint8 *buf, int buflen)
     sess->ifHasInfo = TRUE;
     pull_sess_sendkcp(mgmt,sessid,buf,buflen);
 
+    if(sess->state == PULL_NULL) sess->state = PULL_INFO;
+
     return 0;
 }
-
 
 int pull_sess_check (void * vsess)
 {
@@ -316,7 +330,7 @@ int   pull_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen)
     sess = pull_mgmt_sess_get(mgmt,sessid);
     if(sess){
         EnterCriticalSection(&sess->kcpCS);
-        //push_sess_printf_data(buf,buflen);
+        push_sess_printf_data(buf,buflen);
         ikcp_send(sess->kcp, buf, buflen);
         LeaveCriticalSection(&sess->kcpCS);
     } 
@@ -412,7 +426,7 @@ int    pull_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
     len = ikcp_recv(sess->kcp, buf, sizeof(buf)-1);
     LeaveCriticalSection(&sess->kcpCS);
 
-    printf("pull_sess_input in %d to %s %d \n",buflen,buf,len);
+    if(len != -1) printf("pull_sess_input in %d to %s %d \n",buflen,buf,len);
 
     return 0;
 }

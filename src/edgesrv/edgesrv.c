@@ -72,6 +72,8 @@ void * edge_mgmt_init ( void * hconf, void *pcore, void * http_mgmt)
     mgmt->logdate = 0;
     mgmt->logfp = NULL;
 
+    InitializeCriticalSection(&mgmt->sendCS);
+
     InitializeCriticalSection(&mgmt->pushCS);  
     mgmt->push_list = arr_new(16);
     mgmt->push_table = ht_only_new(200,push_sess_cmp_sessid);
@@ -114,6 +116,8 @@ int edge_mgmt_clean (void * vmgmt)
     if (!mgmt) return -1;
 
     edge_udp_socket_stop(mgmt);
+
+    DeleteCriticalSection(&mgmt->sendCS);
 
     if (mgmt->logfp) fclose(mgmt->logfp);
     DeleteCriticalSection(&mgmt->logfpCS);  

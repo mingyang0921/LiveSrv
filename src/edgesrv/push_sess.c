@@ -216,7 +216,7 @@ int   push_sess_restart (void *vmgmt, uint64 sessid, uint64 runid)
     sess = push_mgmt_sess_get(mgmt,sessid);
     if(!sess){
         sess = push_sess_open (mgmt,sessid,runid);
-        push_sess_add_list(mgmt,sessid,2000);
+        //push_sess_add_list(mgmt,sessid,2000);
         return 0;
     }
 
@@ -293,11 +293,25 @@ int push_sess_check (void * vsess)
 }
 
 
-int push_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr)
+int push_sess_addr(void *vmgmt, uint64 sessid, uint8 *baseaddr)
 {
     PushSess    *sess = NULL;
     EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
-    uint8        baseaddr[64];
+
+    if(!mgmt) return -1;
+
+    sess = push_mgmt_sess_get(mgmt,sessid);
+    if(sess){
+        addr_mgmt_sess_add(mgmt,baseaddr,sessid,TRUE);
+    }
+    
+    return 0;
+}
+
+int   push_sess_peer(void *vmgmt, uint64 sessid, struct sockaddr_in * addr)
+{
+    PushSess    *sess = NULL;
+    EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
 
     if(!mgmt) return -1;
 
@@ -305,11 +319,6 @@ int push_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr)
     if(sess){
         sess->peerip = addr->sin_addr;
         sess->peerport = ntohs(addr->sin_port);
-
-        memset(baseaddr,0,sizeof(addr));
-        sprintf(baseaddr,"%s:%u",inet_ntoa(sess->peerip),sess->peerport);
-        
-        addr_mgmt_sess_add(mgmt,baseaddr,sessid,TRUE);
     }
     
     return 0;
@@ -357,6 +366,31 @@ int push_sess_response(void *vsess, uint8 *buf, int buflen)
 
 	return 0;
 }
+
+int   push_sess_savemd(void *vsess, uint8 *data, int datalen)
+{
+    PushSess   *sess = (EdgeMgmt *)vsess;
+
+    uint8       head=0;
+    uint32      ts=0;
+    uint8       type=0;
+    uint32      size=0;
+
+    if(!sess) return 0;
+
+    head_info_get(data,datalen,&head,&ts,&type,&size);
+
+    if(head == 'T' && type == 'I' && (size == (datalen - 8))){
+        if(datalen > 256) datalen = 10 / 0 ;
+        
+        memcpy(sess->mdinfo,data,datalen);
+        sess->mdinfo_len = datalen;
+        return 1;
+    }
+
+    return 0;
+}
+
 
 static int datacount = 0;
 
@@ -455,6 +489,8 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
         ikcp_input(sess->kcp,pbuf,buflen);
         LeaveCriticalSection(&sess->kcpCS);
 
+        //EnterCriticalSection(&mgmt->sendCS);
+        
         while(1)
         {
             EnterCriticalSection(&sess->kcpCS);
@@ -472,11 +508,16 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
             //printOctet(stdout, buf, 0,30, 2);
 
             ifinfo = FALSE;
-            if(len > 0 && buf[0] == 'T' && buf[4] == 'I' ){
-                memcpy(sess->mdinfo,buf,buflen);
-                sess->mdinfo_len = buflen;
-                ifinfo = TRUE;
+            if(push_sess_savemd(sess,buf,len)){
+                ifinfo = TRUE; 
             }
+
+            //ifinfo = FALSE;
+            //if(len > 0 && buf[0] == 'T' && buf[4] == 'I' ){
+            //    memcpy(sess->mdinfo,buf,buflen);
+            //    sess->mdinfo_len = buflen;
+            //    ifinfo = TRUE;
+            //}
 
             if(len > 0){
 			    num = arr_num(explist);
@@ -497,7 +538,7 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
                 break;
 		    }
         }
-        
+        //LeaveCriticalSection(&mgmt->sendCS);
     }
 
     return 0;
@@ -507,6 +548,7 @@ int   push_sess_add_list(void *vmgmt, ulong sessid, ulong pullid)
 {
     EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
     PushSess    *sess = NULL;
+    int          num  = 0;
 
     if(!mgmt) return -1;
 
@@ -514,6 +556,7 @@ int   push_sess_add_list(void *vmgmt, ulong sessid, ulong pullid)
     if(!sess) return -2;
 
 	EnterCriticalSection(&sess->pullCS);
+    arr_delete_ptr(sess->pull_list,(void*)pullid);
     arr_push(sess->pull_list, (void*)pullid);
 	LeaveCriticalSection(&sess->pullCS);	
 
@@ -543,7 +586,7 @@ int  push_sess_get_list(void *vsess,void * arr)
 	return 0;
 }
 
-int   push_sess_build_list(void *vsess)
+int   push_sess_del_list(void *vsess, uint64 pullid)
 {
     
     return 0;
@@ -554,19 +597,3 @@ int push_body_sendto   (const char *buf, int len, void *kcp, void *user)
     push_sess_response(user,buf,len);
     return 0;
 }
-
-int   push_sess_addlist(void *vmgmt, ulong sessid, ulong pullid)
-{
-    EdgeMgmt      *mgmt = (EdgeMgmt*)vmgmt;
-    PushSess      *sess = NULL;
-
-    if(!mgmt) return -1;
-
-    sess = push_mgmt_sess_get(mgmt,sessid);
-    if(!sess) return -2;
-
-    
-
-    return 0;
-}
-

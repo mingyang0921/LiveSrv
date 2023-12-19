@@ -8,6 +8,7 @@ extern "C" {
 
 #define t_push_kcp_sess_check 2000
 
+
 typedef struct Push_sess {
 	ulong              sessid;
     uint64             runid;
@@ -56,15 +57,17 @@ int   push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen);
 
 int   push_sess_add_list(void *vmgmt, ulong sessid, ulong pullid);
 int   push_sess_get_list(void *vsess,void * arr);
-int   push_sess_build_list(void *vsess);
+int   push_sess_del_list(void *vsess, uint64 pullid);
 
 int   push_body_sendto   (const char *buf, int len, void *kcp, void *user);
 
-int   push_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr);
+int   push_sess_addr(void *vmgmt, uint64 sessid, uint8 *baseaddr);
+int   push_sess_peer(void *vmgmt, uint64 sessid, struct sockaddr_in * addr);
+
 int   push_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen);
 int   push_sess_response(void *vsess, uint8 *buf, int buflen);
 
-int   push_sess_addlist(void *vmgmt, ulong sessid, ulong pullid);
+int   push_sess_savemd(void *vsess, uint8 *data, int datalen);
 
 #ifdef _cplusplus
 }

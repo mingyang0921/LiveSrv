@@ -92,7 +92,7 @@ void *pull_sess_fetch (void * vmgmt)
         return NULL;
     };
 
-    ikcp_setoutput(sess->kcp, pull_body_sendto);
+    ikcp_setoutput(sess->kcp, (int (*)(const char*, int, ikcpcb *, void* ))pull_body_sendto);
     ikcp_nodelay(sess->kcp, 1, 10, 2, 1);
     ikcp_wndsize(sess->kcp, 256, 1024);
     
@@ -194,7 +194,6 @@ int   pull_sess_restart (void *vmgmt, uint64 sessid, uint64 runid)
 {
 	PullSess    *sess = NULL;
     EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
-	PullSess	*tmp  = NULL;
 
     if(!mgmt) return -1;
 
@@ -330,8 +329,8 @@ int   pull_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen)
     sess = pull_mgmt_sess_get(mgmt,sessid);
     if(sess){
         EnterCriticalSection(&sess->kcpCS);
-        push_sess_printf_data(buf,buflen);
-        ikcp_send(sess->kcp, buf, buflen);
+        //push_sess_printf_data(buf,buflen);
+        ikcp_send(sess->kcp, (const char*)buf, buflen);
         LeaveCriticalSection(&sess->kcpCS);
     } 
 
@@ -369,7 +368,7 @@ int pull_sess_response(void *vsess, uint8 *buf, int buflen)
 
 int pull_body_sendto   (const char *buf, int len, void *kcp, void *user)
 {
-    pull_sess_response(user,buf,len);
+    pull_sess_response(user,(uint8*)buf,len);
     return 0;
 }
 
@@ -396,7 +395,7 @@ int pull_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr)
         sess->peerport = ntohs(addr->sin_port);
 
         memset(baseaddr,0,sizeof(addr));
-        sprintf(baseaddr,"%s:%u",inet_ntoa(sess->peerip),sess->peerport);
+        sprintf((char*)baseaddr,"%s:%u",inet_ntoa(sess->peerip),sess->peerport);
         
         addr_mgmt_sess_add(mgmt,baseaddr,sessid,FALSE);
     }
@@ -418,12 +417,12 @@ int    pull_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
 
     
     EnterCriticalSection(&sess->kcpCS);
-    ikcp_input(sess->kcp,pbuf,buflen);
+    ikcp_input(sess->kcp,(const char*)pbuf,buflen);
     LeaveCriticalSection(&sess->kcpCS);
 
     memset(buf,0,sizeof(buf));
     EnterCriticalSection(&sess->kcpCS);
-    len = ikcp_recv(sess->kcp, buf, sizeof(buf)-1);
+    len = ikcp_recv(sess->kcp, (char*)buf, sizeof(buf)-1);
     LeaveCriticalSection(&sess->kcpCS);
 
     if(len != -1) printf("pull_sess_input in %d to %s %d \n",buflen,buf,len);

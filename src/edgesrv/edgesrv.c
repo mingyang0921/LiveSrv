@@ -19,7 +19,7 @@ int addr_sess_cmp_sessid (void * a, void * b)
     PushSessId *va = (PushSessId *)a;
     uint8      *vb = (uint8*)b;	
 
-    if(strncmp(va->addr,vb,strlen(va->addr)) == 0){
+    if(strncmp((const char*)va->addr,(const char*)vb,strlen((const char *)va->addr)) == 0){
         return 0;
     }
 
@@ -29,10 +29,7 @@ int addr_sess_cmp_sessid (void * a, void * b)
 int edge_mgmt_conf (void * vmgmt, void * hconf)
 {
     EdgeMgmt   * mgmt = (EdgeMgmt *)vmgmt;
-    uint8       varsect[64];	
-	uint8     * pstr = NULL;
-	int         i = 0;
-
+    
     if (!mgmt) return -1;
     if (!hconf) hconf = mgmt ->hconf;
 
@@ -41,9 +38,9 @@ int edge_mgmt_conf (void * vmgmt, void * hconf)
     mgmt->udp_port = conf_get_int(hconf, "Edge Service Node", "UDP Listen Port");
     if(mgmt->udp_port <= 0 ) mgmt->udp_port = 54321;
 
-    mgmt->logpath = conf_get_string(hconf, "Edge Service Node", "Log Path");
-    if (mgmt->logpath == NULL || strlen(mgmt->logpath) < 1)
-        mgmt->logpath = ".";
+    mgmt->logpath = (uint8*)conf_get_string(hconf, "Edge Service Node", "Log Path");
+    if (mgmt->logpath == NULL || strlen((const char *)mgmt->logpath) < 1)
+        mgmt->logpath = (uint8*)".";
 
     mgmt->logstatus = conf_get_int(hconf, "Sks Service Node", "Log Status");
     if(mgmt->logstatus <= 0 ) mgmt->logstatus = 0;
@@ -384,7 +381,7 @@ int    addr_mgmt_sess_add(void *vmgmt, uint8 *addr, ulong sessid, uint8 state)
 
 	if(!mgmt) return -1;
 
-    memcpy(id->addr,addr,strlen(addr) > ADDR_SIZE ? ADDR_SIZE : strlen(addr));
+    memcpy(id->addr,addr,strlen((const char*)addr) > ADDR_SIZE ? ADDR_SIZE : strlen((const char*)addr));
     id->sessid = sessid;
     id->ifpush = state;
 

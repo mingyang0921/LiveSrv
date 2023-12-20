@@ -4,6 +4,8 @@
 
 #include "ikcp.h"
 #include "edgesrv.h"
+#include "edge_io.h"
+#include "pull_sess.h"
 #include "push_sess.h"
 
 int push_sess_cmp_sessid (void *a, void *b)
@@ -102,8 +104,7 @@ void *push_sess_fetch (void * vmgmt)
         bpool_recycle(mgmt->push_pool, sess);
         return NULL;
     };
-
-    ikcp_setoutput(sess->kcp, push_body_sendto);
+    ikcp_setoutput(sess->kcp,(int (*)(const char*, int, ikcpcb *, void* ))push_body_sendto);
     ikcp_nodelay(sess->kcp, 1, 10, 2, 1);
     ikcp_wndsize(sess->kcp, 256, 1024);
     
@@ -209,14 +210,12 @@ int   push_sess_restart (void *vmgmt, uint64 sessid, uint64 runid)
 {
 	PushSess    *sess = NULL;
     EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
-	PushSess	*tmp  = NULL;
 
     if(!mgmt) return -1;
 
     sess = push_mgmt_sess_get(mgmt,sessid);
     if(!sess){
         sess = push_sess_open (mgmt,sessid,runid);
-        //push_sess_add_list(mgmt,sessid,2000);
         return 0;
     }
 
@@ -228,7 +227,8 @@ int   push_sess_restart (void *vmgmt, uint64 sessid, uint64 runid)
     return 0;
 }
 
-int push_sess_para(uint8 *pbuf, int buflen, uint64 *sessid, uint64 *runid)
+int push_sess_para(uint8 *pbuf, int
+    buflen, uint64 *sessid, uint64 *runid)
 {
     *sessid = 1000;
     *runid = 5000;
@@ -333,7 +333,7 @@ int   push_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen)
 
     sess = push_mgmt_sess_get(mgmt,sessid);
     if(sess){
-        ikcp_send(sess->kcp, buf, buflen);
+        ikcp_send(sess->kcp, (const char*)buf, buflen);
     } 
 
     return 0;
@@ -343,7 +343,7 @@ int   push_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen)
 int push_sess_response(void *vsess, uint8 *buf, int buflen)
 {
     EdgeMgmt   *mgmt = NULL;
-    PushSess   *sess = (EdgeMgmt *)vsess;
+    PushSess   *sess = (PushSess *)vsess;
 	int         ret = 0;
     
 	struct sockaddr_in sock;	
@@ -359,17 +359,14 @@ int push_sess_response(void *vsess, uint8 *buf, int buflen)
 	sock.sin_port = htons(sess->peerport);
     
 	ret = sendto (iodev_fd(mgmt->listendev_udp), buf,buflen, 0,(struct sockaddr *)&sock, sizeof(sock));	
-    if(ret<0)printf("error: %s\n", strerror(errno));
+    if(ret<0) printf("error: %s\n", strerror(errno));
     
-	//printf("SendTo %s:%d %d bytes\n", inet_ntoa(sock.sin_addr), ntohs(sock.sin_port), ret);
-	
-
 	return 0;
 }
 
 int   push_sess_savemd(void *vsess, uint8 *data, int datalen)
 {
-    PushSess   *sess = (EdgeMgmt *)vsess;
+    PushSess   *sess = (PushSess *)vsess;
 
     uint8       head=0;
     uint32      ts=0;
@@ -381,7 +378,7 @@ int   push_sess_savemd(void *vsess, uint8 *data, int datalen)
     head_info_get(data,datalen,&head,&ts,&type,&size);
 
     if(head == 'T' && type == 'I' && (size == (datalen - 8))){
-        if(datalen > 256) datalen = 10 / 0 ;
+        if(datalen > 256) datalen = 256;
         
         memcpy(sess->mdinfo,data,datalen);
         sess->mdinfo_len = datalen;
@@ -476,7 +473,6 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
     int            num = 0;
     void          *tmp = NULL;
     int            i = 0;
-    uint8          state=0;
     uint8          ifinfo=0;
 
     sess = push_mgmt_sess_get(mgmt,sessid);
@@ -486,7 +482,7 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
         push_sess_get_list(sess,explist);
         
         EnterCriticalSection(&sess->kcpCS);
-        ikcp_input(sess->kcp,pbuf,buflen);
+        ikcp_input(sess->kcp,(const char *)pbuf,(long)buflen);
         LeaveCriticalSection(&sess->kcpCS);
 
         //EnterCriticalSection(&mgmt->sendCS);
@@ -494,7 +490,7 @@ int push_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen)
         while(1)
         {
             EnterCriticalSection(&sess->kcpCS);
-            len = ikcp_recv(sess->kcp, buf, sizeof(buf)-1);
+            len = ikcp_recv(sess->kcp, (char*)buf, (int)(sizeof(buf)-1));
             if(len > 0 ){
                 //push_sess_printf_data1(buf,len);
             }            
@@ -548,7 +544,6 @@ int   push_sess_add_list(void *vmgmt, ulong sessid, ulong pullid)
 {
     EdgeMgmt    *mgmt = (EdgeMgmt*)vmgmt;
     PushSess    *sess = NULL;
-    int          num  = 0;
 
     if(!mgmt) return -1;
 
@@ -594,6 +589,6 @@ int   push_sess_del_list(void *vsess, uint64 pullid)
 
 int push_body_sendto   (const char *buf, int len, void *kcp, void *user)
 {
-    push_sess_response(user,buf,len);
+    push_sess_response(user,(uint8*)buf,len);
     return 0;
 }

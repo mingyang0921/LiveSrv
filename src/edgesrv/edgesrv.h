@@ -10,6 +10,7 @@ extern "C" {
 #define AVKCP_CONV (('A' << 0) | ('V' << 8) | ('K' << 16) | ('C' << 24))
 #define ADDR_SIZE 64
 
+
 typedef struct edge_mgmt {
 
 	uint16             nodeid;

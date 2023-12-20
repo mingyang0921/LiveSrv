@@ -67,6 +67,9 @@ int    pull_sess_addr(void *vmgmt, uint64 sessid, struct sockaddr_in * addr);
 
 int    pull_sess_input(void *vmgmt, uint64 sessid, uint8 *pbuf, int buflen);
 
+int    pull_sess_sendkcp(void *vmgmt, uint64 sessid, uint8 *buf, int buflen);
+
+
 #ifdef _cplusplus
 }
 #endif
